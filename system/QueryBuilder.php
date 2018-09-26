@@ -129,6 +129,48 @@ class QueryBuilder
     }
     
     /**
+     * Execute the query and return the result.
+     * 
+     * @param array $aValue
+     * 
+     * @return mixed
+     */
+    public function insert(array $aValue)
+    {
+        return $this->oDatabase->exec(
+            'insert', $this->buildInsert($aValue), $this->aBind
+        );
+    }
+    
+    /**
+     * Execute the query and return the result.
+     * 
+     * @param array $aValue
+     * 
+     * @return mixed
+     */
+    public function update(array $aValue)
+    {
+        return $this->oDatabase->exec(
+            'update', $this->buildUpdate($aValue), $this->aBind
+        );
+    }
+    
+    /**
+     * Execute the query and return the result.
+     * 
+     * @param array $aValue
+     * 
+     * @return mixed
+     */
+    public function delete()
+    {
+        return $this->oDatabase->exec(
+            'delete', $this->buildDelete(), $this->aBind
+        );
+    }
+    
+    /**
      * Build the select query.
      * 
      * @return string $sQuery
@@ -136,27 +178,144 @@ class QueryBuilder
     private function buildSelect()
     {
         $sQuery = 'SELECT '. implode(', ', $this->aColumns).' FROM '.$this->sTable;
+             
+        $sQuery .= $this->buildWhere();
+        
+        return $sQuery;
+    }
+    
+    /**
+     * Build the insert query.
+     * 
+     * @param array $aValue
+     * 
+     * @return string
+     */
+    private function buildInsert(array $aValue)
+    {
+        //We'll list all the columns where there are a value to insert.
+        $aColumn    = [];
+        //We'll add all '?'
+        $aBindMark  = [];
+        foreach ($aValue as $sKey => $mValues)
+        {
+            //If $mValue is an array, then we are inserting multiple row.
+            //Else we insert a unique row.
+            if(!is_array($mValues))
+            {
+                $bUnique        = true;
+                $aColumn[]      = $sKey;
+                $this->aBind[]  = $mValues;
+                $aBindMark[]    = '?';
+            }
+            else
+            {
+                $bUnique = false;
+                if (empty($aColumn))
+                {
+                    $aColumn    = array_keys($mValues);
+                    $iNbValue   = count($mValues);
+                    
+                    $aBindNbMark = [];
+                    for ($i = 0 ; $i < $iNbValue ;  $i++)
+                    {
+                        $aBindNbMark[] = '?';
+                    }
+                    
+                    $sBindMark = '('. implode(', ', $aBindNbMark).')';
+                }
                 
+                foreach ($mValues as $mValue)
+                {
+                    $this->aBind[] = $mValue;
+                }
+                
+                $aBindMark[] = $sBindMark;
+            }
+        }
+            
+        if ($bUnique)
+        {
+            $sBind = '('. implode(', ', $aBindMark).')';
+        }
+        else
+        {
+            $sBind = implode(', ', $aBindMark);
+        }
+        
+        return 'INSERT INTO '.$this->sTable.' ('. implode(', ', $aColumn).') VALUES '.$sBind;
+    }
+    
+    /**
+     * Build the update query.
+     * 
+     * @param array $aValue
+     * 
+     * @return string $sQuery
+     */
+    private function buildUpdate(array $aValue)
+    {
+        $sQuery = 'UPDATE '.$this->sTable.' SET ';
+        
+        $aSet   = [];
+        $aBind  = [];
+        foreach ($aValue as $sKey => $mValue)
+        {
+            $aSet[]     = $sKey.' = ?';
+            $aBind[]    = $mValue;
+        }
+        
+        $this->aBind = array_merge($aBind, $this->aBind);
+        
+        $sQuery .= implode(', ', $aSet);
+        $sQuery .= $this->buildWhere();
+        
+        return $sQuery;
+    }
+    
+    /**
+     * Build the delete query.
+     * 
+     * @return string $sQuery
+     */
+    private function buildDelete()
+    {
+        $sQuery = 'DELETE FROM '.$this->sTable;
+        
+        $sQuery .= $this->buildWhere();
+        
+        return $sQuery;
+    }
+    
+    /**
+     * Build the where clause.
+     * 
+     * @return string $sWhere
+     */
+    private function buildWhere()
+    {
+        $sWhere     = '';
+        $sAndWhere  = '';
         if (!empty($this->aWhere['and']))
         {
             $sAndWhere = implode(' AND ', $this->aWhere['and']);
-            $sQuery .= ' WHERE '.$sAndWhere;
+            $sWhere .= ' WHERE '.$sAndWhere;
         }
 
         if (!empty($this->aWhere['or']))
         {
             if ($sAndWhere = '')
             {
-                $sQuery .= ' WHERE ';
+                $sWhere .= ' WHERE ';
             }
             else
             {
-                $sQuery .= ' OR ';
+                $sWhere .= ' OR ';
             }
 
-            $sQuery .= implode(' OR ', $this->aWhere['or']);
+            $sWhere .= implode(' OR ', $this->aWhere['or']);
         }
         
-        return $sQuery;
+        return $sWhere;
     }
 }

@@ -53,7 +53,7 @@ class Database
         }
         else
         {
-            return $oRequest->execute();
+            return $oRequest->execute($aValue);
         }
     }
 }
