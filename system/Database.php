@@ -11,7 +11,19 @@ use PDO;
  */
 class Database
 {
+    /**
+     * PDO Instance.
+     * 
+     * @var PDO
+     */
     private $oPdo;
+    
+    /**
+     * We'll cache query to not instanciate another PDOStatement.
+     * 
+     * @var type 
+     */
+    private $aCache = [];
     
     public function __construct(array $aConfig)
     {
@@ -20,7 +32,8 @@ class Database
 			$this->oPdo = new PDO(
                 'mysql:host='.$aConfig['host'].';dbname='.$aConfig['database'].'', 
                 $aConfig['user'], 
-                $aConfig['password']
+                $aConfig['password'],
+                [PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8']
             );
 			$this->oPdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY,true);
 		}
@@ -41,7 +54,7 @@ class Database
      */
     public function exec($sType, $sQuery, $aValue = [])
     {
-        $oRequest = $this->oPdo->prepare($sQuery);
+        $oRequest = $this->buildRequest($sQuery);
         
         if ($sType == 'select')
         {
@@ -55,5 +68,33 @@ class Database
         {
             return $oRequest->execute($aValue);
         }
+    }
+    
+    /**
+     * Prepare a query or take one from the cache.
+     * 
+     * @param string $sQuery
+     * 
+     * @return PDOStatement $oRequest
+     */
+    private function buildRequest($sQuery)
+    {
+        $iKeyCache = array_search($sQuery, array_column($this->aCache, 'query'));
+        
+        if ($iKeyCache === false)
+        {
+            $oRequest = $this->oPdo->prepare($sQuery);
+            
+            $this->aCache[] = [
+                'object'    => $oRequest,
+                'query'     => $sQuery
+            ];
+        }
+        else
+        {
+            $oRequest = $this->aCache[$iKeyCache]['object'];
+        }
+        
+        return $oRequest;
     }
 }
