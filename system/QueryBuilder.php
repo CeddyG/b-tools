@@ -123,8 +123,10 @@ class QueryBuilder
      */
     public function get()
     {
+        $aBind = $this->aBind;
+        
         return $this->oDatabase->exec(
-            'select', $this->buildSelect(), $this->aBind
+            'select', $this->buildSelect(), $aBind
         );
     }
     
@@ -137,8 +139,10 @@ class QueryBuilder
      */
     public function insert(array $aValue)
     {
+        $aBind = $this->aBind;
+        
         return $this->oDatabase->exec(
-            'insert', $this->buildInsert($aValue), $this->aBind
+            'insert', $this->buildInsert($aValue), $aBind
         );
     }
     
@@ -151,8 +155,10 @@ class QueryBuilder
      */
     public function update(array $aValue)
     {
+        $aBind = $this->aBind;
+        
         return $this->oDatabase->exec(
-            'update', $this->buildUpdate($aValue), $this->aBind
+            'update', $this->buildUpdate($aValue), $aBind
         );
     }
     
@@ -165,8 +171,10 @@ class QueryBuilder
      */
     public function delete()
     {
+        $aBind = $this->aBind;
+        
         return $this->oDatabase->exec(
-            'delete', $this->buildDelete(), $this->aBind
+            'delete', $this->buildDelete(), $aBind
         );
     }
     
@@ -181,6 +189,8 @@ class QueryBuilder
              
         $sQuery .= $this->buildWhere();
         
+        $this->flush();
+        
         return $sQuery;
     }
     
@@ -189,10 +199,12 @@ class QueryBuilder
      * 
      * @param array $aValue
      * 
-     * @return string
+     * @return string $sQuery
      */
     private function buildInsert(array $aValue)
     {
+        $sQuery = 'INSERT INTO '.$this->sTable;
+        
         //We'll list all the columns where there are a value to insert.
         $aColumn    = [];
         //We'll add all '?'
@@ -233,17 +245,20 @@ class QueryBuilder
                 $aBindMark[] = $sBindMark;
             }
         }
-            
+        
+        $sQuery .= ' ('. implode(', ', $aColumn).') VALUES ';
         if ($bUnique)
         {
-            $sBind = '('. implode(', ', $aBindMark).')';
+            $sQuery .= '('. implode(', ', $aBindMark).')';
         }
         else
         {
-            $sBind = implode(', ', $aBindMark);
+            $sQuery .= implode(', ', $aBindMark);
         }
         
-        return 'INSERT INTO '.$this->sTable.' ('. implode(', ', $aColumn).') VALUES '.$sBind;
+        $this->flush();
+        
+        return $sQuery;
     }
     
     /**
@@ -270,6 +285,8 @@ class QueryBuilder
         $sQuery .= implode(', ', $aSet);
         $sQuery .= $this->buildWhere();
         
+        $this->flush();
+        
         return $sQuery;
     }
     
@@ -283,6 +300,8 @@ class QueryBuilder
         $sQuery = 'DELETE FROM '.$this->sTable;
         
         $sQuery .= $this->buildWhere();
+        
+        $this->flush();
         
         return $sQuery;
     }
@@ -317,5 +336,17 @@ class QueryBuilder
         }
         
         return $sWhere;
+    }
+    
+    /**
+     * Reset some attributes.
+     * 
+     * @return void
+     */
+    private function flush()
+    {
+        $this->aBind    = [];
+        $this->aColumns = [];
+        $this->aWhere   = [];
     }
 }
