@@ -15,7 +15,7 @@ class QueryBuilderProvider extends Provider
 {
     public function register()
     {
-        $this->oContainer->set('QueryBuilder', function ($oContainer) {
+        $this->oContainer->set('factory', 'QueryBuilder', function ($oContainer) {
             return new QueryBuilder($oContainer->get('Database'));
         });
     }

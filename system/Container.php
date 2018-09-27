@@ -15,12 +15,18 @@ class Container
     /**
      * Register how instanciate ($cResolver) a class ($sKey)
      * 
+     * @param string $sType
      * @param string $sKey
      * @param \System\callable $cResolver
+     * 
+     * @return void
      */
-    public function set($sKey, Callable $cResolver)
+    public function set($sType, $sKey, Callable $cResolver)
     {
-        $this->aRegistry[$sKey] = $cResolver;
+        $this->aRegistry[$sKey] = [
+            'resolver'  => $cResolver,
+            'type'      => $sType
+        ];
     }
     
     /**
@@ -36,13 +42,22 @@ class Container
         {
             if(isset($this->aRegistry[$sKey]))
             {
-                $this->aInstance[$sKey] = $this->aRegistry[$sKey]($this);
+                if ($this->aRegistry[$sKey]['type'] == 'singleton')
+                {
+                    $this->aInstance[$sKey] = $this->aRegistry[$sKey]['resolver']($this);
+                    return $this->aInstance[$sKey];
+                }
+                elseif ($this->aRegistry[$sKey]['type'] == 'factory')
+                {
+                    return $this->aRegistry[$sKey]['resolver']($this);
+                }                   
             } 
             else 
             {
                 return $this;
             }
         }
+        
         return $this->aInstance[$sKey];
     }
 }

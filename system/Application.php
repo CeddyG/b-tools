@@ -120,7 +120,7 @@ class Application
         {
             if (strpos($sClass, 'System\Providers') !== false)
             {
-                $this->oContainer->set($sClass, function ($oContainer) use ($sClass){
+                $this->oContainer->set('singleton', $sClass, function ($oContainer) use ($sClass){
                     return new $sClass($this);
                 });
                 
